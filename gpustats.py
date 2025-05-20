@@ -152,7 +152,7 @@ with MongoClient(
             machine_log = {
                 "machineId": gpustat_machine,
                 "name": gpustat_machine,
-                "timestamp": datetime.datetime(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
