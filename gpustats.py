@@ -26,10 +26,7 @@ logging.basicConfig(
 
 
 def get_nvidia_stats():
-    free_gpus = set()
-    entries = []
     gpu_infos = []
-
     devices = nvitop.Device.all()
     for device in devices:
         gid = device.index
@@ -47,15 +44,12 @@ def get_nvidia_stats():
         if len(processes) > 0:
             procs = nvitop.GpuProcess.take_snapshots(processes.values(), failsafe=True)
             for proc in procs:
-                entries.append(dict(gid=gid, pid=proc.pid, uid=proc.username, perc=gpu_util))
                 gpu_info["users"].append(proc.username)
         else:
             free_gpus.add(gid)
         gpu_infos.append(gpu_info)
 
-    free_gpus = sorted(free_gpus)
-
-    return free_gpus, entries, gpu_infos
+    return gpu_infos
 
 
 def get_top_stats():
@@ -110,16 +104,7 @@ with MongoClient(
         logger.info("Updating gpustat...")
         try:
             timestamp = datetime.datetime.now(datetime.timezone.utc)
-            free_gpus, entries, gpu_info = get_nvidia_stats()
-            db.gpu.insert_one(
-                {
-                    "timestamp": timestamp,
-                    "machine": gpustat_machine,
-                    "totalfree": len(free_gpus),
-                    "whichfree": free_gpus,
-                    "details": entries,
-                }
-            )
+            gpu_info = get_nvidia_stats()
             (
                 nproc,
                 lavg,
@@ -129,25 +114,6 @@ with MongoClient(
                 hdd_used,
                 procs,
             ) = get_top_stats()
-            logger.info(f"Updated {gpustat_machine} gpu stats")
-
-            db.cpu.insert_one(
-                {
-                    "timestamp": timestamp,
-                    "machine": gpustat_machine,
-                    "nproc": nproc,
-                    "load_avg": lavg,
-                    "mem_total": mem_total,
-                    "mem_used": mem_used,
-                    "hdd_avail": hdd_avail,
-                    "hdd_used": hdd_used,
-                    "procs": procs,
-                }
-            )
-            db.machines.replace_one(
-                {"_id": gpustat_machine}, {"_id": gpustat_machine}, upsert=True
-            )
-            logger.info(f"Updated {gpustat_machine} cpu stats")
 
             machine_log = {
                 "machineId": gpustat_machine,
@@ -157,10 +123,10 @@ with MongoClient(
                 "cpu": {
                     "nproc": nproc,
                     "load_avg": lavg,
-                    "memory_used": mem_used,
-                    "memory_total": mem_total,
-                    "storage_used": hdd_used,
-                    "storage_total": hdd_avail,
+                    "memory_used": mem_used * 1024,
+                    "memory_total": mem_total * 1024,
+                    "storage_used": hdd_used * 1024,
+                    "storage_total": (hdd_used + hdd_avail) * 1024,
                     "procs": procs,
                 },
             }
