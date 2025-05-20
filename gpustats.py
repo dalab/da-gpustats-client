@@ -17,6 +17,8 @@ config = rcfile('gpustat')
 
 mongo_user, mongo_pw, mongo_host, mongo_port, gpustat_machine = [config.get(k, d) for k, d in (('mongo_user', ''), ('mongo_pw', ''), ('mongo_host', 'localhost'), ('mongo_port', '27017'), ('machine_name', ''))]
 
+logger = logging.getLogger('gpustat')
+
 
 def get_nvidia_stats():
     free_gpus = set()
@@ -118,7 +120,9 @@ with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
             }
             db.machine_logs.insert_one(machine_log)
 
+            logger.info(f"Updated {gpustat_machine} stats")
+
         except Exception as e:
             raise
-            logging.warn(e)
+            logger.warn(e)
         time.sleep(60)
