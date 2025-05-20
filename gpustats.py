@@ -6,6 +6,7 @@ import time
 import logging
 import functools
 import subprocess
+import traceback
 
 import sh
 import nvitop
@@ -88,20 +89,49 @@ def get_top_stats():
     return nproc, lavg, mem_total, mem_used, hdd_avail, hdd_used, procs
 
 
-
 with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
-    db = mongo_client['gpustat']
+    db = mongo_client["gpustat"]
     if mongo_user:
-        db.authenticate(mongo_user, mongo_pw, source='admin')
-    
-    while(True):
+        db.authenticate(mongo_user, mongo_pw, source="admin")
+
+    while True:
         try:
             timestamp = time.time()
             free_gpus, entries, gpu_info = get_nvidia_stats()
-            db.gpu.insert({'timestamp': timestamp, 'machine': gpustat_machine, 'totalfree': len(free_gpus), 'whichfree': free_gpus, 'details': entries})
-            nproc, lavg, mem_total, mem_used, hdd_avail, hdd_used, procs = get_top_stats()
-            db.cpu.insert({'timestamp': timestamp, 'machine': gpustat_machine, 'nproc': nproc, 'load_avg': lavg, 'mem_total': mem_total, 'mem_used': mem_used, 'hdd_avail': hdd_avail, 'hdd_used': hdd_used, 'procs': procs})
-            db.machines.update({'_id': gpustat_machine}, {'_id': gpustat_machine}, upsert=True)
+            db.gpu.insert(
+                {
+                    "timestamp": timestamp,
+                    "machine": gpustat_machine,
+                    "totalfree": len(free_gpus),
+                    "whichfree": free_gpus,
+                    "details": entries,
+                }
+            )
+            (
+                nproc,
+                lavg,
+                mem_total,
+                mem_used,
+                hdd_avail,
+                hdd_used,
+                procs,
+            ) = get_top_stats()
+            db.cpu.insert(
+                {
+                    "timestamp": timestamp,
+                    "machine": gpustat_machine,
+                    "nproc": nproc,
+                    "load_avg": lavg,
+                    "mem_total": mem_total,
+                    "mem_used": mem_used,
+                    "hdd_avail": hdd_avail,
+                    "hdd_used": hdd_used,
+                    "procs": procs,
+                }
+            )
+            db.machines.update(
+                {"_id": gpustat_machine}, {"_id": gpustat_machine}, upsert=True
+            )
 
             machine_log = {
                 "machineId": gpustat_machine,
@@ -121,8 +151,9 @@ with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
             db.machine_logs.insert_one(machine_log)
 
             logger.info(f"Updated {gpustat_machine} stats")
-
         except Exception as e:
-            raise
-            logger.warn(e)
+            logger.warning(e)
+            traceback.print_exc()
+        except sh.ErrorReturnCode_1 as e:
+            logger.warning(e)
         time.sleep(60)
