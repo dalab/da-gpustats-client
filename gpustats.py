@@ -1,7 +1,8 @@
 import os
-import time
 import logging
 import traceback
+import time
+import datetime
 
 import sh
 import nvitop
@@ -108,7 +109,7 @@ with MongoClient(
     while True:
         logger.info("Updating gpustat...")
         try:
-            timestamp = time.time()
+            timestamp = datetime.datetime.now(datetime.timezone.utc)
             free_gpus, entries, gpu_info = get_nvidia_stats()
             db.gpu.insert_one(
                 {
@@ -151,7 +152,7 @@ with MongoClient(
             machine_log = {
                 "machineId": gpustat_machine,
                 "name": gpustat_machine,
-                "timestamp": timestamp,
+                "timestamp": datetime.datetime(),
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
