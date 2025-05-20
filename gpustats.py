@@ -1,11 +1,6 @@
-#!/usr/bin/env python3
-
-import re
 import os
 import time
 import logging
-import functools
-import subprocess
 import traceback
 
 import sh
@@ -18,12 +13,21 @@ config = rcfile('gpustat')
 
 mongo_user, mongo_pw, mongo_host, mongo_port, gpustat_machine = [config.get(k, d) for k, d in (('mongo_user', ''), ('mongo_pw', ''), ('mongo_host', 'localhost'), ('mongo_port', '27017'), ('machine_name', ''))]
 
-logger = logging.getLogger('gpustat')
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(os.path.dirname(__file__), "gpustat.log")),
+    ],
+)
 
 
 def get_nvidia_stats():
     free_gpus = set()
     entries = []
+    gpu_infos = []
 
     devices = nvitop.Device.all()
     for device in devices:
@@ -43,12 +47,14 @@ def get_nvidia_stats():
             procs = nvitop.GpuProcess.take_snapshots(processes.values(), failsafe=True)
             for proc in procs:
                 entries.append(dict(gid=gid, pid=proc.pid, uid=proc.username, perc=gpu_util))
+                gpu_info["users"].append(proc.username)
         else:
             free_gpus.add(gid)
+        gpu_infos.append(gpu_info)
 
     free_gpus = sorted(free_gpus)
 
-    return free_gpus, entries, gpu_info
+    return free_gpus, entries, gpu_infos
 
 
 def get_top_stats():
@@ -89,16 +95,22 @@ def get_top_stats():
     return nproc, lavg, mem_total, mem_used, hdd_avail, hdd_used, procs
 
 
-with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
-    db = mongo_client["gpustat"]
-    if mongo_user:
-        db.authenticate(mongo_user, mongo_pw, source="admin")
-
+with MongoClient(
+    host=mongo_host,
+    port=int(mongo_port),
+    username=mongo_user,
+    password=mongo_pw,
+    authSource="admin",
+) as client:
+    db = client["gpustat"]
+    
+    logger.info("Starting gpustat")
     while True:
+        logger.info("Updating gpustat...")
         try:
             timestamp = time.time()
             free_gpus, entries, gpu_info = get_nvidia_stats()
-            db.gpu.insert(
+            db.gpu.insert_one(
                 {
                     "timestamp": timestamp,
                     "machine": gpustat_machine,
@@ -116,7 +128,9 @@ with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
                 hdd_used,
                 procs,
             ) = get_top_stats()
-            db.cpu.insert(
+            logger.info(f"Updated {gpustat_machine} gpu stats")
+
+            db.cpu.insert_one(
                 {
                     "timestamp": timestamp,
                     "machine": gpustat_machine,
@@ -129,9 +143,10 @@ with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
                     "procs": procs,
                 }
             )
-            db.machines.update(
+            db.machines.replace_one(
                 {"_id": gpustat_machine}, {"_id": gpustat_machine}, upsert=True
             )
+            logger.info(f"Updated {gpustat_machine} cpu stats")
 
             machine_log = {
                 "machineId": gpustat_machine,
@@ -156,4 +171,5 @@ with MongoClient(host=mongo_host, port=int(mongo_port)) as mongo_client:
             traceback.print_exc()
         except sh.ErrorReturnCode_1 as e:
             logger.warning(e)
+        logger.info("Sleeping for 60 seconds...")
         time.sleep(60)
