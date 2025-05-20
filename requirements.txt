@@ -1,4 +1,4 @@
-sh
-pymongo
-rcfile
-nvitop
+sh>=2.2.2
+pymongo>=4.13.0
+rcfile>=0.1.4
+nvitop>=1.5.0
