@@ -1,0 +1,4 @@
+sh
+pymongo
+rcfile
+nvitop
