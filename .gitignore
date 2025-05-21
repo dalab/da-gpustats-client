@@ -1,0 +1,5 @@
+.gpustatrc
+gpustats.log
+.venv
+venv
+__pycache__/
