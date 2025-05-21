@@ -1,0 +1,16 @@
+[Unit]
+Description=GPU stats worker
+StartLimitIntervalSec=0
+After=network-online.target
+
+[Service]
+Type=simple
+User=gpuwatch
+WorkingDirectory=/opt/gpustats
+ExecStart=bash run.sh
+# light auto-restart so you never lose data
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target

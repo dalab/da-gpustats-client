@@ -1,0 +1,11 @@
+[Unit]
+Description=Update gpustats Git repo
+Wants=gpustats.service        # restart afterwards
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=gpuwatch
+WorkingDirectory=/opt/gpustats
+ExecStart=/usr/bin/git pull --ff-only
+ExecStartPost=/usr/bin/systemctl restart gpustats.service

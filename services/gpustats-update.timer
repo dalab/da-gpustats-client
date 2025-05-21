@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for gpustats updates every 15 min
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
