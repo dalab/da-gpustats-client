@@ -12,7 +12,6 @@ from rcfile import rcfile
 
 config = rcfile('gpustat')
 
-mongo_user, mongo_pw, mongo_host, mongo_port, gpustat_machine = [config.get(k, d) for k, d in (('mongo_user', ''), ('mongo_pw', ''), ('mongo_host', 'localhost'), ('mongo_port', '27017'), ('machine_name', ''))]
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -45,8 +44,6 @@ def get_nvidia_stats():
             procs = nvitop.GpuProcess.take_snapshots(processes.values(), failsafe=True)
             for proc in procs:
                 gpu_info["users"].append(proc.username)
-        else:
-            free_gpus.add(gid)
         gpu_infos.append(gpu_info)
 
     return gpu_infos
@@ -91,13 +88,16 @@ def get_top_stats():
 
 
 with MongoClient(
-    host=mongo_host,
-    port=int(mongo_port),
-    username=mongo_user,
-    password=mongo_pw,
+    host=config.get("mongo_host", "localhost"),
+    port=int(config.get("mongo_port", 27017)),
+    username=config.get("mongo_user", ""),
+    password=config.get("mongo_pw", ""),
     authSource="admin",
 ) as client:
     db = client["gpustat"]
+
+    machine_name = config.get("machine_name", "<unnamed>")
+    log_interval = int(config.get("log_interval", 60))
     
     logger.info("Starting gpustat")
     while True:
@@ -116,8 +116,8 @@ with MongoClient(
             ) = get_top_stats()
 
             machine_log = {
-                "machineId": gpustat_machine,
-                "name": gpustat_machine,
+                "machineId": machine_name,
+                "name": machine_name,
                 "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "gpus": gpu_info,
                 "cpu": {
@@ -132,11 +132,11 @@ with MongoClient(
             }
             db.machine_logs.insert_one(machine_log)
 
-            logger.info(f"Updated {gpustat_machine} stats")
+            logger.info(f"Updated {machine_name} stats")
         except Exception as e:
             logger.warning(e)
             traceback.print_exc()
         except sh.ErrorReturnCode_1 as e:
             logger.warning(e)
-        logger.info("Sleeping for 60 seconds...")
-        time.sleep(60)
+        logger.info(f"Sleeping for {log_interval} seconds...")
+        time.sleep(log_interval)
