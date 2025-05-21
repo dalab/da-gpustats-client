@@ -6,7 +6,7 @@ After=network-online.target
 [Service]
 Type=simple
 User=gpuwatch
-WorkingDirectory=/opt/gpustats
+WorkingDirectory=/opt/gpustats-client
 ExecStart=bash run.sh
 # light auto-restart so you never lose data
 Restart=on-failure
