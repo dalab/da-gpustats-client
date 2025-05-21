@@ -10,7 +10,7 @@ WorkingDirectory=/opt/gpustats-client
 ExecStart=bash run.sh
 # light auto-restart so you never lose data
 Restart=on-failure
-RestartSec=3s
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
