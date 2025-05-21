@@ -11,6 +11,8 @@ from rcfile import rcfile
 
 
 config = rcfile('gpustat')
+print(config)
+
 
 
 logger = logging.getLogger(__name__)
