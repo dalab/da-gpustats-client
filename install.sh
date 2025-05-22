@@ -78,8 +78,14 @@ fi
 # ───── virtual environment & dependencies ──────────────────────────────────────
 if ! $SUDO test -d "$VENV_DIR"; then
     echo "Creating Python virtualenv"
-    $SUDO python3 -m pip install --quiet virtualenv
-    $SUDO python3 -m virtualenv "$VENV_DIR"
+    # check if python3-venv is installed
+    if ! $SUDO dpkg -l | grep -q python3-venv; then
+        echo "python3-venv not found. Pleas install it by running:"
+        echo "  sudo apt install python3-venv"
+        echo "and re-run the installer."
+        exit 1
+    fi
+    $SUDO python3 -m venv "$VENV_DIR"
 fi
 
 echo "Installing Python dependencies"
