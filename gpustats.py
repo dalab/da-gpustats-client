@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 import traceback
 import time
 import datetime
@@ -62,7 +63,7 @@ def get_top_stats():
             ctext = e.stdout.decode()
         else:
             raise
-    ctext = [l for l in ctext.split("\n") if "system-local" in l][0]
+    ctext = [line for line in ctext.split("\n") if re.split(r"\s+", line)[-1].strip() == "/local"][0]
     tkns = [t for t in ctext.split() if len(t)]
     hdd_used, hdd_avail = map(int, tkns[2:4])
 
