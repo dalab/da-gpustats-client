@@ -1,9 +1,9 @@
 [Unit]
-Description=Check for gpustats updates every 60 min
+Description=Check for gpustats updates every 10 min
 
 [Timer]
 OnBootSec=5m
-OnUnitActiveSec=60m
+OnUnitActiveSec=10m
 Persistent=true
 
 [Install]
