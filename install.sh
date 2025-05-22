@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/sh
 #
 # gpustats-client unattended installer
-# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/install.sh | sh`
+# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/HEAD/install.sh | sh`
 #
 # ---------------------------------------------------------------------
 
-set -euo pipefail
+set -e
 
 # ───── configuration ────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/dalab/da-gpustats-client.git"
@@ -23,11 +23,11 @@ else
     $SUDO -v
 fi
 
-echo "Installing gpustats-client into $REPO_DIR …"
+echo "Installing gpustats-client into $REPO_DIR"
 
 # ───── clone or update repository ───────────────────────────────────────────────
 if [ ! -d "$REPO_DIR" ]; then
-    echo "Cloning repository…"
+    echo "Cloning repository"
     $SUDO git clone --quiet "$REPO_URL" "$REPO_DIR"
     # mark it as safe for later git access
     $SUDO git -C "$REPO_DIR" config --add safe.directory "$REPO_DIR"
@@ -39,25 +39,24 @@ fi
 
 # ───── create .gpustatrc if missing ────────────────────────────────────────────
 if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
-    echo "Creating .gpustatrc …"
+    echo "Creating .gpustatrc"
     default_machine_name=$(hostname -s)
 
     read -r -p "Enter machine name [${default_machine_name}]: " machine_name
-    read -r -p "Enter log interval in seconds [60]: "         log_interval
+    read -r -p "Enter log interval in seconds [30]: "         log_interval
     read -r -p "Enter MongoDB username: "                     mongo_user
-    read -r -s -p "Enter MongoDB password: "                  mongo_pw
-    echo
+    read -r -p "Enter MongoDB password: "                  mongo_pw
     read -r -p "Enter MongoDB host [cake.da.inf.ethz.ch]: "   mongo_host
     read -r -p "Enter MongoDB port [38510]: "                 mongo_port
 
     # defaults
     machine_name=${machine_name:-$default_machine_name}
-    log_interval=${log_interval:-60}
+    log_interval=${log_interval:-30}
     mongo_host=${mongo_host:-cake.da.inf.ethz.ch}
     mongo_port=${mongo_port:-38510}
 
     # write file atomically
-    cat <<EOL | $SUDO tee "$REPO_DIR/.gpustatrc" >/dev/null
+    cat <<EOL | $SUDO tee "$REPO_DIR/.gpustatrc" >/dev/null 2>&1
 [gpustat]
 machine_name = $machine_name
 log_interval = $log_interval
@@ -74,7 +73,7 @@ else
 fi
 
 # ───── ensure dedicated system user ─────────────────────────────────────────────
-if ! id "gpuwatch" &>/dev/null; then
+if ! id "gpuwatch" >/dev/null 2>&1; then
     echo "Creating system user 'gpuwatch'"
     $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin gpuwatch
 fi
@@ -95,7 +94,6 @@ $SUDO install -m 644 "$REPO_DIR/$SERVICE_DIR/gpustats-update.timer" /etc/systemd
 $SUDO install -m 644 "$REPO_DIR/$SERVICE_DIR/gpustats-update.service" /etc/systemd/system/
 
 # ───── ownership fix for runtime user ──────────────────────────────────────────
-echo "Setting ownership of $REPO_DIR to gpuwatch"
 $SUDO chown -R gpuwatch:gpuwatch "$REPO_DIR"
 
 # ───── enable & start services ─────────────────────────────────────────────────
