@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # gpustats-client unattended installer
-# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/HEAD/install.sh | bash`
+# run with `bash -c "$(curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/HEAD/install.sh)"`
 #
 # ---------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ if [ ! -d "$REPO_DIR" ]; then
     echo "Cloning repository"
     $SUDO git clone --quiet "$REPO_URL" "$REPO_DIR"
     # mark it as safe for later git access
-    git config --global --add safe.directory "$REPO_DIR"
+    $SUDO git config --global --add safe.directory "$REPO_DIR"
 else
     echo "Repository already exists. Pulling latest changes"
     $SUDO git -C "$REPO_DIR" fetch --quiet --all
@@ -43,11 +43,11 @@ if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
     default_machine_name=$(hostname -s)
 
     read -r -p "Enter machine name [${default_machine_name}]: " machine_name
-    read -r -p "Enter log interval in seconds [30]: "         log_interval
-    read -r -p "Enter MongoDB username: "                     mongo_user
-    read -r -p "Enter MongoDB password: "                  mongo_pw
-    read -r -p "Enter MongoDB host [cake.da.inf.ethz.ch]: "   mongo_host
-    read -r -p "Enter MongoDB port [38510]: "                 mongo_port
+    read -r -p "Enter log interval in seconds [30]: " log_interval
+    read -r -p "Enter MongoDB host [cake.da.inf.ethz.ch]: " mongo_host
+    read -r -p "Enter MongoDB port [38510]: " mongo_port
+    read -r -p "Enter MongoDB username: " mongo_user
+    read -r -p "Enter MongoDB password: " mongo_pw
 
     # defaults
     machine_name=${machine_name:-$default_machine_name}
