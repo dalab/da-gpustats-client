@@ -50,6 +50,9 @@ if ! $SUDO test -d "$VENV_DIR"; then
     $SUDO python3 -m venv "$VENV_DIR"
 fi
 
+echo "Installing Python dependencies"
+$SUDO "$VENV_DIR/bin/python" -m pip install --quiet --upgrade -r "$REPO_DIR/requirements.txt"
+
 # ───── create .gpustatrc if missing ────────────────────────────────────────────
 if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
     echo "Creating .gpustatrc"
@@ -87,9 +90,6 @@ if ! id "gpuwatch" &>/dev/null; then
     echo "Creating system user 'gpuwatch'"
     $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin gpuwatch
 fi
-
-echo "Installing Python dependencies"
-$SUDO "$VENV_DIR/bin/python" -m pip install --quiet --upgrade -r "$REPO_DIR/requirements.txt"
 
 # ───── systemd service units ───────────────────────────────────────────────────
 echo "Installing systemd units"
