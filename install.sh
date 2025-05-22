@@ -104,6 +104,6 @@ $SUDO chown -R gpuwatch:gpuwatch "$REPO_DIR"
 echo "Enabling and starting services"
 $SUDO systemctl daemon-reload
 $SUDO systemctl enable gpustats.service gpustats-update.timer
-$SUDO systemctl restart gpustats.service gpustats-update.timer
 
 echo "Installation finished successfully ✅"
+echo "You can inspect logs with:  sudo journalctl -u gpustats.service -f"
