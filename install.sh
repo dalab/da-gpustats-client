@@ -1,11 +1,11 @@
 #!/bin/sh
 #
 # gpustats-client unattended installer
-# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/HEAD/install.sh | sh`
+# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/HEAD/install.sh | bash`
 #
 # ---------------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
 # ───── configuration ────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/dalab/da-gpustats-client.git"
@@ -30,7 +30,7 @@ if [ ! -d "$REPO_DIR" ]; then
     echo "Cloning repository"
     $SUDO git clone --quiet "$REPO_URL" "$REPO_DIR"
     # mark it as safe for later git access
-    $SUDO git -C "$REPO_DIR" config --add safe.directory "$REPO_DIR"
+    git config --global --add safe.directory "$REPO_DIR"
 else
     echo "Repository already exists. Pulling latest changes"
     $SUDO git -C "$REPO_DIR" fetch --quiet --all
@@ -56,7 +56,7 @@ if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
     mongo_port=${mongo_port:-38510}
 
     # write file atomically
-    cat <<EOL | $SUDO tee "$REPO_DIR/.gpustatrc" >/dev/null 2>&1
+    cat <<EOL | $SUDO tee "$REPO_DIR/.gpustatrc" >/dev/null
 [gpustat]
 machine_name = $machine_name
 log_interval = $log_interval
@@ -73,7 +73,7 @@ else
 fi
 
 # ───── ensure dedicated system user ─────────────────────────────────────────────
-if ! id "gpuwatch" >/dev/null 2>&1; then
+if ! id "gpuwatch" &>/dev/null; then
     echo "Creating system user 'gpuwatch'"
     $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin gpuwatch
 fi
