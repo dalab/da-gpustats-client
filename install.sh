@@ -78,7 +78,8 @@ fi
 # ───── virtual environment & dependencies ──────────────────────────────────────
 if ! $SUDO test -d "$VENV_DIR"; then
     echo "Creating Python virtualenv"
-    $SUDO python3 -m venv "$VENV_DIR"
+    $SUDO python3 -m pip install --quiet virtualenv
+    $SUDO python3 -m virtualenv "$VENV_DIR"
 fi
 
 echo "Installing Python dependencies"
