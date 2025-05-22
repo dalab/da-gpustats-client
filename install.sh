@@ -37,6 +37,19 @@ else
     $SUDO git -C "$REPO_DIR" reset --quiet --hard origin/main
 fi
 
+# ───── virtual environment & dependencies ──────────────────────────────────────
+if ! $SUDO test -d "$VENV_DIR"; then
+    echo "Creating Python virtualenv"
+    # check if python3-venv is installed
+    if ! $SUDO dpkg -l | grep -q python3-venv; then
+        echo "python3-venv not found. Pleas install it by running:"
+        echo "  sudo apt install python3-venv"
+        echo "and re-run the installer."
+        exit 1
+    fi
+    $SUDO python3 -m venv "$VENV_DIR"
+fi
+
 # ───── create .gpustatrc if missing ────────────────────────────────────────────
 if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
     echo "Creating .gpustatrc"
@@ -73,19 +86,6 @@ fi
 if ! id "gpuwatch" &>/dev/null; then
     echo "Creating system user 'gpuwatch'"
     $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin gpuwatch
-fi
-
-# ───── virtual environment & dependencies ──────────────────────────────────────
-if ! $SUDO test -d "$VENV_DIR"; then
-    echo "Creating Python virtualenv"
-    # check if python3-venv is installed
-    if ! $SUDO dpkg -l | grep -q python3-venv; then
-        echo "python3-venv not found. Pleas install it by running:"
-        echo "  sudo apt install python3-venv"
-        echo "and re-run the installer."
-        exit 1
-    fi
-    $SUDO python3 -m venv "$VENV_DIR"
 fi
 
 echo "Installing Python dependencies"
