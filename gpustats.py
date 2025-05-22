@@ -63,9 +63,14 @@ def get_top_stats():
             ctext = e.stdout.decode()
         else:
             raise
-    ctext = [line for line in ctext.split("\n") if re.split(r"\s+", line)[-1].strip() == "/local"][0]
-    tkns = [t for t in ctext.split() if len(t)]
-    hdd_used, hdd_avail = map(int, tkns[2:4])
+    lines = [line.split() for line in ctext.split("\n") if len(line.strip())]
+    path_to_sizes = {line[-1].strip(): (int(line[2]), int(line[3])) for line in lines}
+    if "/local" in path_to_sizes:
+        hdd_used, hdd_avail = path_to_sizes["/local"]
+    elif "/" in path_to_sizes:
+        hdd_used, hdd_avail = path_to_sizes["/"]
+    else:
+        raise RuntimeError("No /local or / found in df output")
 
     ctext = sh.top("-b", "-n1").split("\n")
     lavg = float(ctext[0].split("load average:")[1].strip().split()[0][:-1])
