@@ -1,79 +1,107 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# gpustats-client unattended installer
+# run with `curl -fsSL https://raw.githubusercontent.com/dalab/da-gpustats-client/install.sh | sh`
+#
+# ---------------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
-# clone the repository if it doesn't exist
-if [ ! -d "/opt/gpustats-client" ]; then
-    echo "Cloning gpustats-client repository..."
-    git clone --filter=blob:none --no-checkout https://github.com/dalab/da-gpustats-client.git /opt/gpustats-client
-    git config --global --add safe.directory /opt/gpustats-client
-    cd /opt/gpustats-client
+# ───── configuration ────────────────────────────────────────────────────────────
+REPO_URL="https://github.com/dalab/da-gpustats-client.git"
+REPO_DIR="/opt/gpustats-client"
+SERVICE_DIR="services"          # relative to REPO_DIR
+VENV_DIR="$REPO_DIR/venv"
+# ────────────────────────────────────────────────────────────────────────────────
+
+# privilege-escalation wrapper
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO=""            # we are already root
 else
-    echo "Repository already exists. Pulling latest changes..."
-    cd /opt/gpustats-client
-    git fetch --all
-    git reset --hard origin/main
+    SUDO="sudo"
+    # ask for the password up-front so later calls don’t interrupt the flow
+    $SUDO -v
 fi
 
-# generate .gpustatrc
-if [ ! -f /opt/gpustats-client/.gpustatrc ]; then
-    echo "Creating .gpustatrc..."
+echo "Installing gpustats-client into $REPO_DIR …"
+
+# ───── clone or update repository ───────────────────────────────────────────────
+if [ ! -d "$REPO_DIR" ]; then
+    echo "Cloning repository…"
+    $SUDO git clone --quiet "$REPO_URL" "$REPO_DIR"
+    # mark it as safe for later git access
+    $SUDO git -C "$REPO_DIR" config --add safe.directory "$REPO_DIR"
+else
+    echo "Repository already exists. Pulling latest changes"
+    $SUDO git -C "$REPO_DIR" fetch --quiet --all
+    $SUDO git -C "$REPO_DIR" reset --quiet --hard origin/main
+fi
+
+# ───── create .gpustatrc if missing ────────────────────────────────────────────
+if ! $SUDO test -f "$REPO_DIR/.gpustatrc"; then
+    echo "Creating .gpustatrc …"
     default_machine_name=$(hostname -s)
-    read -p "Enter machine name (${default_machine_name}): " machine_name
-    read -p "Enter log interval in seconds (60): " log_interval
-    read -p "Enter MongoDB username: " mongo_user
-    read -p "Enter MongoDB password: " mongo_pw
-    read -p "Enter MongoDB host (cake.da.inf.ethz.ch): " mongo_host
-    read -p "Enter MongoDB port (38510): " mongo_port
-    # set default values if not provided
+
+    read -r -p "Enter machine name [${default_machine_name}]: " machine_name
+    read -r -p "Enter log interval in seconds [60]: "         log_interval
+    read -r -p "Enter MongoDB username: "                     mongo_user
+    read -r -s -p "Enter MongoDB password: "                  mongo_pw
+    echo
+    read -r -p "Enter MongoDB host [cake.da.inf.ethz.ch]: "   mongo_host
+    read -r -p "Enter MongoDB port [38510]: "                 mongo_port
+
+    # defaults
     machine_name=${machine_name:-$default_machine_name}
     log_interval=${log_interval:-60}
     mongo_host=${mongo_host:-cake.da.inf.ethz.ch}
     mongo_port=${mongo_port:-38510}
-    # create .gpustatrc file
-    cat <<EOL > /opt/gpustats-client/.gpustatrc
+
+    # write file atomically
+    cat <<EOL | $SUDO tee "$REPO_DIR/.gpustatrc" >/dev/null
 [gpustat]
 machine_name = $machine_name
 log_interval = $log_interval
-mongo_user = $mongo_user
-mongo_pw = $mongo_pw
-mongo_host = $mongo_host
-mongo_port = $mongo_port
+mongo_user   = $mongo_user
+mongo_pw     = $mongo_pw
+mongo_host   = $mongo_host
+mongo_port   = $mongo_port
 EOL
-    echo "Created .gpustatrc file with the following content:"
-    cat /opt/gpustats-client/.gpustatrc
+
+    echo "Created $REPO_DIR/.gpustatrc:"
+    $SUDO cat "$REPO_DIR/.gpustatrc"
 else
-    echo ".gpustatrc already exists. Skipping creation."
+    echo ".gpustatrc already exists - skipping."
 fi
 
-# add "gpuwatch" user if it doesn't exist
+# ───── ensure dedicated system user ─────────────────────────────────────────────
 if ! id "gpuwatch" &>/dev/null; then
-    echo "Creating user gpuwatch..."
-    useradd --system --no-create-home --shell /bin/bash gpuwatch
+    echo "Creating system user 'gpuwatch'"
+    $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin gpuwatch
 fi
 
-# give "gpuwatch" user read-write access to the repository
-chown -R gpuwatch:gpuwatch /opt/gpustats-client
-
-
-# create a venv if none exists
-if [ ! -d "venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv venv
+# ───── virtual environment & dependencies ──────────────────────────────────────
+if ! $SUDO test -d "$VENV_DIR"; then
+    echo "Creating Python virtualenv"
+    $SUDO python3 -m venv "$VENV_DIR"
 fi
 
-# install requirements
-venv/bin/python -m pip install -U -r requirements.txt
+echo "Installing Python dependencies"
+$SUDO "$VENV_DIR/bin/python" -m pip install --quiet --upgrade -r "$REPO_DIR/requirements.txt"
 
-# add service files
-echo "Adding service files..."
-cp ./services/gpustats.service /etc/systemd/system/
-cp ./services/gpustats-update.service /etc/systemd/system/
-cp ./services/gpustats-update.timer /etc/systemd/system/
+# ───── systemd service units ───────────────────────────────────────────────────
+echo "Installing systemd units"
+$SUDO install -m 644 "$REPO_DIR/$SERVICE_DIR/gpustats.service" /etc/systemd/system/
+$SUDO install -m 644 "$REPO_DIR/$SERVICE_DIR/gpustats-update.timer" /etc/systemd/system/
+$SUDO install -m 644 "$REPO_DIR/$SERVICE_DIR/gpustats-update.service" /etc/systemd/system/
 
-# enable and start the service
-echo "Enabling and starting the service..."
-systemctl daemon-reload
-systemctl enable --now gpustats.service gpustats-update.timer
-systemctl start gpustats.service gpustats-update.timer
-systemctl restart gpustats.service gpustats-update.timer
+# ───── ownership fix for runtime user ──────────────────────────────────────────
+echo "Setting ownership of $REPO_DIR to gpuwatch"
+$SUDO chown -R gpuwatch:gpuwatch "$REPO_DIR"
+
+# ───── enable & start services ─────────────────────────────────────────────────
+echo "Enabling and starting services"
+$SUDO systemctl daemon-reload
+$SUDO systemctl enable gpustats.service gpustats-update.timer
+$SUDO systemctl restart gpustats.service gpustats-update.timer
+
+echo "Installation finished successfully ✅"
