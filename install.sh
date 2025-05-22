@@ -65,9 +65,6 @@ mongo_pw     = $mongo_pw
 mongo_host   = $mongo_host
 mongo_port   = $mongo_port
 EOL
-
-    echo "Created $REPO_DIR/.gpustatrc:"
-    $SUDO cat "$REPO_DIR/.gpustatrc"
 else
     echo ".gpustatrc already exists - skipping."
 fi
