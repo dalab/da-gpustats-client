@@ -41,7 +41,7 @@ fi
 if ! $SUDO test -d "$VENV_DIR"; then
     echo "Creating Python virtualenv"
     # check if python3-venv is installed
-    if ! $SUDO dpkg -l | grep -q python3-venv; then
+    if ! $SUDO dpkg -s python3-venv &>/dev/null; then
         echo "python3-venv not found. Pleas install it by running:"
         echo "  sudo apt install python3-venv"
         echo "and re-run the installer."
