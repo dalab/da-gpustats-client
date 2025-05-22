@@ -1,5 +1,5 @@
 .gpustatrc
-gpustats.log
+gpustat.log
 .venv
 venv
 __pycache__/
