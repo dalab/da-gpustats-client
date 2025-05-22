@@ -71,7 +71,7 @@ def get_top_stats():
         sizes = path_to_sizes["/"]
     else:
         raise RuntimeError("No /local or / found in df output")
-    hdd_avail, hdd_used = map(int, sizes)
+    hdd_used, hdd_avail = map(int, sizes)
 
     ctext = sh.top("-b", "-n1").split("\n")
     lavg = float(ctext[0].split("load average:")[1].strip().split()[0][:-1])
