@@ -129,7 +129,7 @@ with MongoClient(
                 "machineId": machine_name,
                 "name": machine_name,
                 "timestamp": timestamp,
-                "log_interval": (timestamp - last_timestamp).total_seconds(),
+                "log_interval": min(300.0, (timestamp - last_timestamp).total_seconds()),
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
@@ -144,11 +144,11 @@ with MongoClient(
             db.machine_logs.insert_one(machine_log)
 
             logger.info(f"Updated {machine_name} stats")
+            last_timestamp = timestamp
         except Exception as e:
             logger.warning(e)
             traceback.print_exc()
         except sh.ErrorReturnCode_1 as e:
             logger.warning(e)
-        last_timestamp = timestamp
         logger.info(f"Sleeping for {log_interval} seconds...")
         time.sleep(log_interval)
