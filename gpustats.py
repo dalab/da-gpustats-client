@@ -129,7 +129,7 @@ with MongoClient(
                 "machineId": machine_name,
                 "name": machine_name,
                 "timestamp": timestamp,
-                "log_interval": timestamp - last_timestamp,
+                "log_interval": (timestamp - last_timestamp).total_seconds(),
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
