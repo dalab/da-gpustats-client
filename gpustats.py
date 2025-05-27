@@ -127,6 +127,7 @@ with MongoClient(
                 "machineId": machine_name,
                 "name": machine_name,
                 "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                "log_interval": log_interval,
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
