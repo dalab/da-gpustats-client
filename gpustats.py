@@ -32,6 +32,7 @@ def get_nvidia_stats():
         gid = device.index
         gpu_util = device.gpu_utilization()
         gpu_info = {
+            "idx": gid,
             "name": device.name(),
             "temperature": device.temperature(),
             "memory_total": device.memory_total(),
