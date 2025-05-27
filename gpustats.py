@@ -106,12 +106,14 @@ with MongoClient(
 
     machine_name = config.get("machine_name", "<unnamed>")
     log_interval = int(config.get("log_interval", 60))
+
+    last_timestamp = datetime.datetime.now(datetime.timezone.utc)
     
     logger.info("Starting gpustat")
     while True:
         logger.info("Updating gpustat...")
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
         try:
-            timestamp = datetime.datetime.now(datetime.timezone.utc)
             gpu_info = get_nvidia_stats()
             (
                 nproc,
@@ -126,8 +128,8 @@ with MongoClient(
             machine_log = {
                 "machineId": machine_name,
                 "name": machine_name,
-                "timestamp": datetime.datetime.now(datetime.timezone.utc),
-                "log_interval": log_interval,
+                "timestamp": timestamp,
+                "log_interval": timestamp - last_timestamp,
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
@@ -147,5 +149,6 @@ with MongoClient(
             traceback.print_exc()
         except sh.ErrorReturnCode_1 as e:
             logger.warning(e)
+        last_timestamp = timestamp
         logger.info(f"Sleeping for {log_interval} seconds...")
         time.sleep(log_interval)
