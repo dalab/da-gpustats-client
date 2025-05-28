@@ -107,12 +107,12 @@ with MongoClient(
     machine_name = config.get("machine_name", "<unnamed>")
     log_interval = int(config.get("log_interval", 60))
 
-    last_timestamp = datetime.datetime.now(datetime.timezone.utc)
-    
+    prev_t = time.perf_counter()
+
     logger.info("Starting gpustat")
     while True:
-        logger.info("Updating gpustat...")
         timestamp = datetime.datetime.now(datetime.timezone.utc)
+        logger.info("Updating gpustat...")
         try:
             gpu_info = get_nvidia_stats()
             (
@@ -125,11 +125,12 @@ with MongoClient(
                 procs,
             ) = get_top_stats()
 
+            curr_t = time.perf_counter()
             machine_log = {
                 "machineId": machine_name,
                 "name": machine_name,
                 "timestamp": timestamp,
-                "log_interval": min(300.0, (timestamp - last_timestamp).total_seconds()),
+                "log_interval": min(300.0, curr_t - prev_t),
                 "gpus": gpu_info,
                 "cpu": {
                     "nproc": nproc,
@@ -142,9 +143,9 @@ with MongoClient(
                 },
             }
             db.machine_logs.insert_one(machine_log)
+            prev_t = curr_t
 
             logger.info(f"Updated {machine_name} stats")
-            last_timestamp = timestamp
         except Exception as e:
             logger.warning(e)
             traceback.print_exc()
